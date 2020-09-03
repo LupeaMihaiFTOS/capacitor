@@ -619,7 +619,7 @@ public class Bridge {
      * Build the JSInjector that will be used to inject JS into files served to the app,
      * to ensure that Capacitor's JS and the JS for all the plugins is loaded each time.
      */
-    private JSInjector getJSInjector() {
+    public JSInjector getJSInjector() {
         try {
             String globalJS = JSExport.getGlobalJS(context, isDevMode());
             String coreJS = JSExport.getCoreJS(context);

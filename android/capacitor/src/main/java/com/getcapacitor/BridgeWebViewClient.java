@@ -1,6 +1,7 @@
 package com.getcapacitor;
 
 import android.net.Uri;
+import android.webkit.ValueCallback;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
@@ -27,5 +28,17 @@ public class BridgeWebViewClient extends WebViewClient {
     @Override
     public boolean shouldOverrideUrlLoading(WebView view, String url) {
         return bridge.launchIntent(Uri.parse(url));
+    }
+    
+    @Override
+    public void onPageFinished(WebView view, String url) {
+        view.evaluateJavascript("window.Capacitor", new ValueCallback<String>() {
+            @Override
+            public void onReceiveValue(String value) {
+                if ("null".equalsIgnoreCase(value)) {
+                    view.evaluateJavascript(bridge.getJSInjector().getScriptString(), injected -> {});
+                }
+            }
+        });
     }
 }
