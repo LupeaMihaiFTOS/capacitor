@@ -8,8 +8,11 @@
     "prettier": "prettier \"**/*.{css,html,java,js,mjs,ts}\"",
     "eslint": "eslint . --ext ts",
     "swiftlint": "node-swiftlint",
-    "postinstall": "husky install && lerna bootstrap",
-    "version": "npm run sync-peer-dependencies"
+    "version": "npm run sync-peer-dependencies",
+    "postinstall": "lerna bootstrap",
+    "build:cli": "cd cli && npm run build",
+    "build:core": "cd core && npm run build",
+    "build": "npm run build:cli && npm run build:core"
   },
   "prettier": "@ionic/prettier-config",
   "eslintConfig": {
