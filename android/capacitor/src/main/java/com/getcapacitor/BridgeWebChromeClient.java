@@ -345,6 +345,7 @@ public class BridgeWebChromeClient extends WebChromeClient {
             intent.putExtra(Intent.EXTRA_MIME_TYPES, validTypes);
         }
         try {
+            intent.setType("*/*");
             bridge.cordovaInterface.startActivityForResult(
                 new CordovaPlugin() {
 
