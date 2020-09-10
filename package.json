@@ -11,11 +11,6 @@
     "build:core": "cd core && npm run build",
     "build": "npm run build:cli && npm run build:core"
   },
-  "husky": {
-    "hooks": {
-      "pre-commit": "npm run lint"
-    }
-  },
   "prettier": "@ionic/prettier-config",
   "devDependencies": {
     "@ionic/prettier-config": "^1.0.0",
