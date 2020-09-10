@@ -20,6 +20,8 @@ import android.net.Uri;
 import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
+
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -178,6 +180,9 @@ public class WebViewLocalServer {
         ) {
             Logger.debug("Handling local request: " + request.getUrl().toString());
             return handleLocalRequest(request, handler);
+        } else if(isFtosNativeRuntimeFile(loadingUrl)) {
+            Logger.debug("Handling capacitor runtime injection request: " + request.getUrl().toString());
+            return handleFtosNativeRuntimeInjectionRequest(request, handler);
         } else {
             return handleProxyRequest(request, handler);
         }
@@ -186,6 +191,14 @@ public class WebViewLocalServer {
     private boolean isLocalFile(Uri uri) {
         String path = uri.getPath();
         return path.startsWith(capacitorContentStart) || path.startsWith(capacitorFileStart);
+    }
+
+    private boolean isFtosNativeRuntimeFile(Uri uri) {
+        String path = uri.getPath();
+        if (path.toLowerCase().contains("ftos-native.js")) {
+            return true;
+        }
+        return false;
     }
 
     private WebResourceResponse handleLocalRequest(WebResourceRequest request, PathHandler handler) {
@@ -310,6 +323,18 @@ public class WebViewLocalServer {
     }
 
     /**
+   * Intercept the FtOS native lib load (the capacitor runtime) and return required script assets.
+   * @param request
+   * @param handler
+   * @return
+   */
+    private WebResourceResponse handleFtosNativeRuntimeInjectionRequest(WebResourceRequest request, PathHandler handler) {
+        InputStream responseStream = new ByteArrayInputStream(jsInjector.getScriptStringSafe().getBytes());
+        return new WebResourceResponse("text/javascript", handler.getEncoding(),
+                handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), responseStream);
+    }
+
+    /**
      * Instead of reading files from the filesystem/assets, proxy through to the URL
      * and let an external server handle it.
      * @param request
@@ -346,7 +371,15 @@ public class WebViewLocalServer {
                         CookieManager.getInstance().setCookie(url, cookie);
                     }
                     InputStream responseStream = conn.getInputStream();
-                    responseStream = jsInjector.getInjectedStream(responseStream);
+
+                    // FtOS uses url hash (#) to identify current page. We need to update the browser location if it should change after a redirect
+                    String ur = conn.getURL().toExternalForm();
+                    if (conn.getURL().toExternalForm().equalsIgnoreCase(url)) {
+                        responseStream = jsInjector.getInjectedStream(responseStream);
+                    } else {
+                        responseStream = jsInjector.getInjectedStream(responseStream, conn.getURL().toExternalForm());
+                    }
+
                     bridge.reset();
                     return new WebResourceResponse(
                         "text/html",
