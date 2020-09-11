@@ -104,7 +104,7 @@ class JSInjector {
             return getInjectedStream(responseStream);
         }
         
-        String redirectJs = "<script type=\"text/javascript\">history.replaceState({}, '', '" + changeLocationUrl + "')</script>";
+        String redirectJs = "<script type=\"text/javascript\">history.pushState({}, '', '" + changeLocationUrl + "')</script>";
         String js = "<script type=\"text/javascript\">" + getScriptString() + "</script>";
         String html = this.readAssetStream(responseStream);
         if (html.contains("<head>")) {
