@@ -307,6 +307,7 @@ public class BridgeWebChromeClient extends WebChromeClient {
       intent.putExtra(Intent.EXTRA_MIME_TYPES, validTypes);
     }
     try {
+      intent.setType("*/*");
       bridge.cordovaInterface.startActivityForResult(new CordovaPlugin() {
         @Override
         public void onActivityResult(int requestCode, int resultCode, Intent intent) {

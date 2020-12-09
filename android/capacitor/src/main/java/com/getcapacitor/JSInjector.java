@@ -47,6 +47,18 @@ class JSInjector {
   }
 
   /**
+    * Generates injectable JS content.
+    * This may be used in other forms of injecting that aren't using an InputStream.
+    * It checks for the runtime to not inject multiple times
+    * @return
+    */
+    public String getScriptStringSafe() {
+        return "if (!window.Capacitor) {\n" +
+        getScriptString() +
+        "}";
+    }
+
+  /**
    * Given an InputStream from the web server, prepend it with
    * our JS stream
    * @param responseStream
@@ -64,6 +76,30 @@ class JSInjector {
     }
     return new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8));
   }
+
+   /**
+    * Given an InputStream from the web server, prepend it with
+    * our JS stream, adding a webview url change if necessary
+    * @param responseStream
+    * @return
+    */
+    public InputStream getInjectedStream(InputStream responseStream, String changeLocationUrl) {
+        if (changeLocationUrl.isEmpty()) {
+            return getInjectedStream(responseStream);
+        }
+
+        String redirectJs = "<script type=\"text/javascript\">history.pushState({}, '', '" + changeLocationUrl + "')</script>";
+        String js = "<script type=\"text/javascript\">" + getScriptString() + "</script>";
+        String html = this.readAssetStream(responseStream);
+        if (html.contains("<head>")) {
+            html = html.replace("<head>", "<head>\n" + js + "\n" + redirectJs + "\n");
+        } else if (html.contains("</head>")) {
+            html = html.replace("</head>", js + "\n" + redirectJs + "\n" + "</head>");
+        } else {
+            Logger.error("Unable to inject Capacitor, Plugins won't work");
+        }
+        return new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8));
+    }
 
   private String readAssetStream(InputStream stream) {
     try {

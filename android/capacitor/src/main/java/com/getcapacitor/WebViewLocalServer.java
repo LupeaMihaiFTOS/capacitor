@@ -175,9 +175,20 @@ public class WebViewLocalServer {
     if (isLocalFile(loadingUrl) || (bridge.getConfig().getString("server.url") == null && !bridge.getAppAllowNavigationMask().matches(loadingUrl.getHost()))) {
       Logger.debug("Handling local request: " + request.getUrl().toString());
       return handleLocalRequest(request, handler);
+    } else if(isFtosNativeRuntimeFile(loadingUrl)) {
+      Logger.debug("Handling capacitor runtime injection request: " + request.getUrl().toString());
+      return handleFtosNativeRuntimeInjectionRequest(request, handler);
     } else {
       return handleProxyRequest(request, handler);
     }
+  }
+
+  private boolean isFtosNativeRuntimeFile(Uri uri) {
+    String path = uri.getPath();
+    if (path.toLowerCase().contains("ftos-native.js")) {
+      return true;
+    }
+    return false;
   }
 
   private boolean isLocalFile(Uri uri) {
@@ -279,6 +290,19 @@ public class WebViewLocalServer {
     return null;
   }
 
+
+  /**
+   * Intercept the FtOS native lib load (the capacitor runtime) and return required script assets.
+   * @param request
+   * @param handler
+   * @return
+   */
+    private WebResourceResponse handleFtosNativeRuntimeInjectionRequest(WebResourceRequest request, PathHandler handler) {
+      InputStream responseStream = new ByteArrayInputStream(jsInjector.getScriptStringSafe().getBytes());
+      return new WebResourceResponse("text/javascript", handler.getEncoding(),
+        handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), responseStream);
+    }
+
   /**
    * Instead of reading files from the filesystem/assets, proxy through to the URL
    * and let an external server handle it.
@@ -316,10 +340,18 @@ public class WebViewLocalServer {
             CookieManager.getInstance().setCookie(url, cookie);
           }
           InputStream responseStream = conn.getInputStream();
-          responseStream = jsInjector.getInjectedStream(responseStream);
+          
+          // FtOS uses url hash (#) to identify current page. We need to update the browser location if it should change after a redirect
+          String ur = conn.getURL().toExternalForm();
+          if (conn.getURL().toExternalForm().equalsIgnoreCase(url)) {
+            responseStream = jsInjector.getInjectedStream(responseStream);
+          } else {
+            responseStream = jsInjector.getInjectedStream(responseStream, conn.getURL().toExternalForm());
+          }
+
           bridge.reset();
           return new WebResourceResponse("text/html", handler.getEncoding(),
-                  handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), responseStream);
+            handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), responseStream);
         }
       } catch (SocketTimeoutException ex) {
         bridge.handleAppUrlLoadError(ex);
