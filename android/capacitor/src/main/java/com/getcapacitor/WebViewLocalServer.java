@@ -21,6 +21,7 @@ import android.webkit.CookieManager;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
@@ -311,55 +312,58 @@ public class WebViewLocalServer {
    * @return
    */
   private WebResourceResponse handleProxyRequest(WebResourceRequest request, PathHandler handler) {
-    final String method = request.getMethod();
-    if (method.equals("GET")) {
-      try {
-        String url = request.getUrl().toString();
-        Map<String, String> headers = request.getRequestHeaders();
-        boolean isHtmlText = false;
-        for (Map.Entry<String, String> header : headers.entrySet()) {
-          if (header.getKey().equalsIgnoreCase("Accept") && header.getValue().toLowerCase().contains("text/html")) {
-            isHtmlText = true;
-            break;
-          }
-        }
-        if (isHtmlText) {
-          HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
-          for (Map.Entry<String, String> header : headers.entrySet()) {
-            conn.setRequestProperty(header.getKey(), header.getValue());
-          }
-          String getCookie = CookieManager.getInstance().getCookie(url);
-          if (getCookie != null) {
-            conn.setRequestProperty("Cookie", getCookie);
-          }
-          conn.setRequestMethod(method);
-          conn.setReadTimeout(30 * 1000);
-          conn.setConnectTimeout(30 * 1000);
-          String cookie = conn.getHeaderField("Set-Cookie");
-          if (cookie != null) {
-            CookieManager.getInstance().setCookie(url, cookie);
-          }
-          InputStream responseStream = conn.getInputStream();
-          
-          // FtOS uses url hash (#) to identify current page. We need to update the browser location if it should change after a redirect
-          String ur = conn.getURL().toExternalForm();
-          if (conn.getURL().toExternalForm().equalsIgnoreCase(url)) {
-            responseStream = jsInjector.getInjectedStream(responseStream);
-          } else {
-            responseStream = jsInjector.getInjectedStream(responseStream, conn.getURL().toExternalForm());
-          }
-
-          bridge.reset();
-          return new WebResourceResponse("text/html", handler.getEncoding(),
-            handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), responseStream);
-        }
-      } catch (SocketTimeoutException ex) {
-        bridge.handleAppUrlLoadError(ex);
-      } catch (Exception ex) {
-        bridge.handleAppUrlLoadError(ex);
-      }
-    }
+    // Just skip any preprocessing, let the js injection happen when ftos-native.js file is requested.
     return null;
+
+    // final String method = request.getMethod();
+    // if (method.equals("GET")) {
+    //   try {
+    //     String url = request.getUrl().toString();
+    //     Map<String, String> headers = request.getRequestHeaders();
+    //     boolean isHtmlText = false;
+    //     for (Map.Entry<String, String> header : headers.entrySet()) {
+    //       if (header.getKey().equalsIgnoreCase("Accept") && header.getValue().toLowerCase().contains("text/html")) {
+    //         isHtmlText = true;
+    //         break;
+    //       }
+    //     }
+    //     if (isHtmlText) {
+    //       HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+    //       for (Map.Entry<String, String> header : headers.entrySet()) {
+    //         conn.setRequestProperty(header.getKey(), header.getValue());
+    //       }
+    //       String getCookie = CookieManager.getInstance().getCookie(url);
+    //       if (getCookie != null) {
+    //         conn.setRequestProperty("Cookie", getCookie);
+    //       }
+    //       conn.setRequestMethod(method);
+    //       conn.setReadTimeout(30 * 1000);
+    //       conn.setConnectTimeout(30 * 1000);
+    //       String cookie = conn.getHeaderField("Set-Cookie");
+    //       if (cookie != null) {
+    //         CookieManager.getInstance().setCookie(url, cookie);
+    //       }
+    //       InputStream responseStream = conn.getInputStream();
+          
+    //       // FtOS uses url hash (#) to identify current page. We need to update the browser location if it should change after a redirect
+    //       String ur = conn.getURL().toExternalForm();
+    //       if (conn.getURL().toExternalForm().equalsIgnoreCase(url)) {
+    //         responseStream = jsInjector.getInjectedStream(responseStream);
+    //       } else {
+    //         responseStream = jsInjector.getInjectedStream(responseStream, conn.getURL().toExternalForm());
+    //       }
+
+    //       bridge.reset();
+    //       return new WebResourceResponse("text/html", handler.getEncoding(),
+    //         handler.getStatusCode(), handler.getReasonPhrase(), handler.getResponseHeaders(), responseStream);
+    //     }
+    //   } catch (SocketTimeoutException ex) {
+    //     bridge.handleAppUrlLoadError(ex);
+    //   } catch (Exception ex) {
+    //     bridge.handleAppUrlLoadError(ex);
+    //   }
+    // }
+    // return null;
   }
 
   private String getMimeType(String path, InputStream stream) {
